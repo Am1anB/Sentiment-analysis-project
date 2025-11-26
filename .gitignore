@@ -1,0 +1,63 @@
+# ===========================
+# Python & Backend
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Tooling Caches (Ruff, etc.)
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environment Variables (Secrets)
+.env
+.env.*
+
+# ===========================
+# Data & AI Models (IMPORTANT)
+# ===========================
+# ป้องกันไม่ให้ไฟล์ Model ขนาดใหญ่ถูกอัปโหลด (เกินลิมิต GitHub)
+backend/saved_model/
+saved_model/
+*.safetensors
+*.bin
+*.pth
+*.pt
+
+# ไฟล์ Dataset (ถ้าไม่อยากเก็บ csv ข้อมูลฝึกสอนไว้ใน git)
+*.csv
+backend/law_training_data_500.csv
+
+# ===========================
+# Frontend (React/Vite/Node)
+# ===========================
+# Dependencies (ห้ามเอาขึ้นเด็ดขาด)
+node_modules/
+sentiment-frontend/node_modules/
+
+# Build Output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===========================
+# IDE & OS Files
+# ===========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
