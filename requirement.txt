@@ -1,0 +1,14 @@
+bertopic
+pythainlp
+hf_xet
+openai
+python-dotenv
+langchain_core
+langchain_google_genai
+fastapi
+uvicorn
+pandas
+python-multipart
+transformers
+sentencepiece 
+protobuf
