@@ -20,20 +20,15 @@ class Summarizer():
         1. Language: **Formal Thai (ภาษาไทยทางการ)** suitable for a business dashboard.
         2. Format: Use Markdown structure.
         3. Tone: Objective, Insightful, Professional, and Concise.
+        4. Answer base on RESPONSE STRUCTURE only. don't have to preface.
 
         # RESPONSE STRUCTURE (Markdown)
         
-        ## 1. Executive Overview (บทสรุปผู้บริหาร)
+        ## 1. Overview
         - Write one concise paragraph summarizing the overall situation.
         - Incorporate the sentiment statistics provided to describe the general mood.
 
-        ## 2. Key Insights by Topic (เจาะลึกประเด็นสำคัญ)
-        Iterate through the topics provided in the JSON data. For each significant topic:
-        - **Topic Name:** A clear, human-readable Thai title.
-        - **Summary:** A synthesized explanation of what users are saying.
-        - **Sentiment:** Mention the dominant sentiment for this topic.
-
-        ## 3. Strategic Recommendations (ข้อเสนอแนะเพื่อการปรับปรุง)
+        ## 2. Strategic Recommendations
         - Provide 3 actionable steps based on the insights.
         """
 
@@ -69,24 +64,19 @@ class Summarizer():
             })
         return combined_results
 
-    def calculate_stats(self, combined_data):
-        total = len(combined_data)
-        if total == 0: return "No data"
-        
-        sentiments = [item['sentiment'] for item in combined_data]
-        counts = Counter(sentiments)
-        
+    def calculate_stats(self, sentiment_stat):
+        total = sentiment_stat['negative']['count'] + sentiment_stat['positive']['count'] + sentiment_stat['neutral']['count']
         stat_str = f"Total Responses: {total}\n"
-        for sent, count in counts.items():
-            percent = (count / total) * 100
-            stat_str += f"- {sent}: {count} ({percent:.1f}%)\n"
+        for k, v in sentiment_stat.items():
+            percent = (v['count'] / total) * 100
+            stat_str += f"- {k}: {v['count']} ({percent:.1f}%)\n"
         
         return stat_str
 
-    def summarization(self, sentiment_output, topic_output):
+    def summarization(self, sentiment_output, topic_output, sentiment_stat):
         combined_results = self.handle_docs(sentiment_output, topic_output)
 
-        stats_str = self.calculate_stats(combined_results)
+        stats_str = self.calculate_stats(sentiment_stat)
         print(stats_str)
 
         aggregation = {}

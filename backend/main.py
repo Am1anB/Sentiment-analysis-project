@@ -27,7 +27,7 @@ def gather_all(contents):
 
     topic_output = get_topic_documents(contents)
 
-    summarize, topic_stat = summarizer.summarization(sentiments_output, topic_output)
+    summarize, topic_stat = summarizer.summarization(sentiments_output, topic_output, sentiments_stat)
 
     sentiments_stat["topic"] = topic_stat
     sentiments_stat["summarize"] = summarize
