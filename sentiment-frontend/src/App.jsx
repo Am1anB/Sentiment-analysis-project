@@ -1,32 +1,49 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { 
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
+import ReactMarkdown from 'react-markdown';
 import './App.css';
 
 function App() {
   const [inputText, setInputText] = useState("");
   const [singleResult, setSingleResult] = useState(null);
   const [file, setFile] = useState(null);
-  const [batchResults, setBatchResults] = useState([]);
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState(null);
 
-  // ฟังก์ชันเดิม
+  const COLORS = {
+    Positive: '#28a745',
+    Neutral: '#ffc107',
+    Negative: '#dc3545'
+  };
+
+  const THAI_LABEL = {
+    Positive: 'Positive',
+    Neutral: 'Neutral',
+    Negative: 'Negative'
+  };
+
   const handleAnalyzeText = async () => {
     if (!inputText) return;
     try {
-      const response = await axios.post('http://localhost:8000/analyze-text', {
-        text: inputText
-      });
+      const response = await axios.post('http://localhost:8000/analyze-text', { text: inputText });
       setSingleResult(response.data.sentiment);
     } catch (error) {
       console.error("Error:", error);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ Server");
+      alert("เชื่อมต่อ Server ไม่ได้");
     }
   };
 
-  // ฟังก์ชันเดิม
   const handleFileUpload = async () => {
     if (!file) return;
     setLoading(true);
+    setAnalysisResult(null);
+    setSelectedTopic(null);
+
     const formData = new FormData();
     formData.append("file", file);
 
@@ -34,122 +51,257 @@ function App() {
       const response = await axios.post('http://localhost:8000/analyze-file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
       if (response.data.error) {
         alert(response.data.error);
       } else {
-        setBatchResults(response.data.results);
+        setAnalysisResult(response.data);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("เกิดข้อผิดพลาดในการอัปโหลด");
+      alert("เกิดข้อผิดพลาด (เช็คว่า Server รันอยู่ไหม)");
     } finally {
       setLoading(false);
     }
   };
 
-  const getColor = (sentiment) => {
-    if (sentiment === 'Positive') return '#4caf50'; 
-    if (sentiment === 'Negative') return '#f44336'; 
-    return '#ff9800'; 
+  const getPieData = () => {
+    if (!analysisResult) return [];
+    return [
+      { name: 'Positive', value: analysisResult.positive.count },
+      { name: 'Neutral', value: analysisResult.neutral.count },
+      { name: 'Negative', value: analysisResult.negative.count },
+    ].filter(item => item.value > 0);
   };
 
-  // --- ส่วนที่เพิ่มใหม่: คำนวณยอดรวม ---
-  // ใช้ .reduce เพื่อวนลูปนับจำนวนแต่ละ Sentiment
-  const summary = batchResults.reduce((acc, item) => {
-    const key = item.sentiment;
-    acc[key] = (acc[key] || 0) + 1; // ถ้ามีคีย์นี้ให้ +1 ถ้าไม่มีให้เริ่มที่ 1
-    return acc;
-  }, { Positive: 0, Neutral: 0, Negative: 0 }); // ค่าเริ่มต้น
+  const getBarData = () => {
+    if (!analysisResult || !analysisResult.topic) return [];
+    return analysisResult.topic.map((item) => {
+      const topicName = Object.keys(item)[0];
+      const data = item[topicName];
+      return {
+        name: topicName,
+        total: data.positive.count + data.neutral.count + data.negative.count,
+        details: data 
+      };
+    }).sort((a, b) => b.total - a.total);
+  };
+
+  const handleBarClick = (entry) => {
+    if (!entry) return;
+    const allComments = [];
+    ['positive', 'neutral', 'negative'].forEach(sent => {
+      const docs = entry.details[sent]?.docs || [];
+      docs.forEach(doc => {
+        allComments.push({
+          text: doc,
+          sentiment: sent.charAt(0).toUpperCase() + sent.slice(1)
+        });
+      });
+    });
+
+    setSelectedTopic({
+      name: entry.name,
+      comments: allComments
+    });
+  };
+
+  const barData = getBarData();
+  const chartHeight = Math.max(barData.length * 50, 300); 
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ textAlign: 'center' }}>AI Sentiment Analysis</h1>
+    <div className="container">
+      <h1 className="header">Sentiment Analysis Project</h1>
       
-      {/* Box 1: Single Text (เหมือนเดิม) */}
-      <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '20px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <h2>📝 วิเคราะห์รายประโยค</h2>
-        <textarea 
-          rows="4" 
-          style={{ width: '100%', padding: '10px', fontSize: '16px', boxSizing: 'border-box' }}
-          placeholder="พิมพ์ข้อความที่นี่... (เช่น กฎหมายนี้ดีมาก)"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-        />
-        <button 
-          onClick={handleAnalyzeText} 
-          style={{ marginTop: '10px', padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          วิเคราะห์
-        </button>
-
-        {singleResult && (
-          <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#b7b7b7ff', borderRadius: '4px', borderLeft: `5px solid ${getColor(singleResult)}` }}>
-            ผลลัพธ์: <strong style={{ color: getColor(singleResult), fontSize: '1.2em' }}>{singleResult}</strong>
+      {/* Input Section */}
+      <div className="card-row">
+        <div className="card half-width">
+          <h3>🔍 ทดสอบข้อความ</h3>
+          <div className="input-group">
+            <input 
+              type="text" 
+              className="text-input"
+              placeholder="พิมพ์ข้อความ..." 
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAnalyzeText()}
+            />
+            <button onClick={handleAnalyzeText} className="btn-primary">วิเคราะห์</button>
           </div>
-        )}
+          {singleResult && (
+            <div className="result-badge" style={{ backgroundColor: COLORS[singleResult] }}>
+              ผลลัพธ์: {THAI_LABEL[singleResult]} 
+            </div>
+          )}
+        </div>
+
+        <div className="card half-width">
+          <h3>📂 อัปโหลดไฟล์ (CSV)</h3>
+          <div className="upload-group">
+            <input 
+              type="file" 
+              onChange={(e) => setFile(e.target.files[0])} 
+              accept=".csv"
+              style={{ flex: 1 }}
+            />
+            <button onClick={handleFileUpload} disabled={loading} className="btn-success">
+              {loading ? "กำลังประมวลผล..." : "วิเคราะห์"}
+            </button>
+          </div>
+          <p className="hint-text" style={{ marginTop: '10px' }}>
+            * ไฟล์ CSV ต้องมีคอลัมน์ชื่อ 'text' หรือ 'comment'
+          </p>
+        </div>
       </div>
 
-      {/* Box 2: File Upload (แก้ส่วนแสดงผล) */}
-      <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <h2>📂 วิเคราะห์จากไฟล์ (CSV) - สรุปผล</h2>
-        <p style={{ color: '#666' }}>อัปโหลดไฟล์ CSV เพื่อดูจำนวน Sentiment แต่ละประเภท</p>
-        
-        <input type="file" onChange={(e) => setFile(e.target.files[0])} accept=".csv" />
-        <button 
-          onClick={handleFileUpload} 
-          disabled={loading}
-          style={{ marginLeft: '10px', padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer' }}
-        >
-          {loading ? "กำลังประมวลผล..." : "อัปโหลดและวิเคราะห์"}
-        </button>
-
-        {/* ส่วนแสดงผลลัพธ์แบบใหม่ (Dashboard) */}
-        {batchResults.length > 0 && (
-          <div style={{ marginTop: '30px' }}>
-            <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>
-              ผลการวิเคราะห์ทั้งหมด: {batchResults.length} รายการ
-            </h3>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-around', gap: '10px', flexWrap: 'wrap' }}>
-              
-              {/* Card: Positive */}
-              <div style={{ 
-                flex: 1, minWidth: '150px', padding: '20px', textAlign: 'center', 
-                backgroundColor: '#e8f5e9', border: `2px solid ${getColor('Positive')}`, borderRadius: '10px' 
-              }}>
-                <h2 style={{ color: getColor('Positive'), margin: 0, fontSize: '2.5em' }}>
-                  {summary.Positive || 0}
-                </h2>
-                <div style={{ color: '#333', fontWeight: 'bold' }}>Positive</div>
-              </div>
-
-              {/* Card: Neutral */}
-              <div style={{ 
-                flex: 1, minWidth: '150px', padding: '20px', textAlign: 'center', 
-                backgroundColor: '#fff3e0', border: `2px solid ${getColor('Neutral')}`, borderRadius: '10px' 
-              }}>
-                <h2 style={{ color: getColor('Neutral'), margin: 0, fontSize: '2.5em' }}>
-                  {summary.Neutral || 0}
-                </h2>
-                <div style={{ color: '#333', fontWeight: 'bold' }}>Neutral</div>
-              </div>
-
-              {/* Card: Negative */}
-              <div style={{ 
-                flex: 1, minWidth: '150px', padding: '20px', textAlign: 'center', 
-                backgroundColor: '#ffebee', border: `2px solid ${getColor('Negative')}`, borderRadius: '10px' 
-              }}>
-                <h2 style={{ color: getColor('Negative'), margin: 0, fontSize: '2.5em' }}>
-                  {summary.Negative || 0}
-                </h2>
-                <div style={{ color: '#333', fontWeight: 'bold' }}>Negative</div>
-              </div>
-
+      {analysisResult && (
+        <div className="dashboard-content fade-in">
+          
+          {/* สถิติด่วน */}
+          <div className="stats-grid">
+            <div className="stat-card positive">
+              <div className="stat-number">{analysisResult.positive.count}</div>
+              <div className="stat-label">Positive</div>
+            </div>
+            <div className="stat-card neutral">
+              <div className="stat-number">{analysisResult.neutral.count}</div>
+              <div className="stat-label">Neutral</div>
+            </div>
+            <div className="stat-card negative">
+              <div className="stat-number">{analysisResult.negative.count}</div>
+              <div className="stat-label">Negative</div>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* บทสรุปสำหรับผู้บริหาร */}
+          <div className="summary-section">
+            <h2>บทสรุป</h2>
+            <div className="markdown-content">
+              <ReactMarkdown>{analysisResult.summarize}</ReactMarkdown>
+            </div>
+          </div>
+
+          <div className="charts-layout">
+            {/* Pie Chart */}
+            <div className="card pie-chart-section">
+              <h3>ภาพรวม Sentiment</h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie
+                    data={getPieData()}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${THAI_LABEL[name]} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {getPieData().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    formatter={(value, name) => [value, THAI_LABEL[name] || name]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value) => THAI_LABEL[value] || value}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Bar Chart - ซ่อนแกน Y แล้ว */}
+            <div className="card chart-box scroll-chart-container">
+              <div className="chart-header">
+                <h3>เจาะลึกประเด็น (Topics)</h3>
+                <span className="hint-text">เอาเมาส์ชี้เพื่อดูชื่อหัวข้อ / คลิกแท่งกราฟเพื่อดูรายละเอียด</span>
+              </div>
+              
+              <div className="scroll-area">
+                <div style={{ width: '100%', height: chartHeight }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={barData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" />
+                      {/* แก้ไขตรงนี้: ซ่อนแกน Y (hide) */}
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        width={0} 
+                        hide 
+                      />
+                      <RechartsTooltip 
+                        cursor={{fill: 'rgba(79, 70, 229, 0.1)'}}
+                        formatter={(value) => [`จำนวน: ${value}`, 'ความคิดเห็น']}
+                        labelFormatter={(label) => `หัวข้อ: ${label}`}
+                        contentStyle={{ 
+                          maxWidth: '350px', 
+                          whiteSpace: 'normal',
+                          fontSize: '14px',
+                          padding: '10px',
+                          border: '1px solid #ccc',
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="total" 
+                        fill="#4f46e5" 
+                        barSize={35}
+                        radius={[0, 8, 8, 0]}
+                        onClick={handleBarClick}
+                        style={{ cursor: 'pointer' }}
+                        label={{ position: 'right', fill: '#374151', fontSize: 12 }}
+                      >
+                        {barData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={index % 2 === 0 ? '#4f46e5' : '#6366f1'} 
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Modal Overlay (Popup) --- */}
+      {selectedTopic && (
+        <div className="modal-overlay" onClick={() => setSelectedTopic(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>ความคิดเห็น: "{selectedTopic.name}"</h2>
+              <button className="close-btn" onClick={() => setSelectedTopic(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              {selectedTopic.comments.length === 0 ? (
+                <div className="empty-state">ไม่มีข้อมูลคอมเมนต์</div>
+              ) : (
+                <div className="comments-grid">
+                  {selectedTopic.comments.map((item, i) => (
+                    <div key={i} className={`comment-card ${item.sentiment}`}>
+                      <div className={`sentiment-badge ${item.sentiment}`}>
+                        {THAI_LABEL[item.sentiment] || item.sentiment}
+                      </div>
+                      <p>{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

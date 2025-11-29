@@ -26,16 +26,7 @@ htmlcov/
 # Data & AI Models (IMPORTANT)
 # ===========================
 # ป้องกันไม่ให้ไฟล์ Model ขนาดใหญ่ถูกอัปโหลด (เกินลิมิต GitHub)
-backend/saved_model/
-saved_model/
-*.safetensors
-*.bin
-*.pth
-*.pt
 
-# ไฟล์ Dataset (ถ้าไม่อยากเก็บ csv ข้อมูลฝึกสอนไว้ใน git)
-*.csv
-backend/law_training_data_500.csv
 
 # ===========================
 # Frontend (React/Vite/Node)
@@ -61,3 +52,6 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+
+backend/saved_model/xlm_roberta_model/
