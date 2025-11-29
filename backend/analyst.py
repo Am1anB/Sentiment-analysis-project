@@ -77,7 +77,6 @@ class Summarizer():
         combined_results = self.handle_docs(sentiment_output, topic_output)
 
         stats_str = self.calculate_stats(sentiment_stat)
-        print(stats_str)
 
         aggregation = {}
 
@@ -120,5 +119,4 @@ class Summarizer():
             "stats_str": stats_str,
             "topics_json_str": topics_json_str
         })
-        print(topics_stat)
         return response.content, topics_stat
