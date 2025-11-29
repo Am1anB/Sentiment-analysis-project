@@ -4,7 +4,7 @@ import pandas as pd
 import io
 import os
 
-MODEL_PATH = "./saved_model/xlm_roberta_model"
+MODEL_PATH = "./xlm_roberta_model"
 
 _tokenizer = None
 _model = None
