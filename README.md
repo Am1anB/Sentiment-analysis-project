@@ -40,5 +40,7 @@
 
 * ย้ายไปที่ไดเรกทอรี `frontend`:
     * `cd sentiment-frontend` 
+* ติดตั้ง Dependencies:
+    * `npm i` 
 * รัน Frontend Server:
     * `npm run dev` 
